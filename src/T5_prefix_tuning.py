@@ -323,14 +323,14 @@ class DST_Prefixed(pl.LightningModule):
                     for param in self.model.encoder.block[0].parameters():
                         param.requires_grad = True
 
-                    # for param in self.model.encoder.block[-1].parameters():
-                    #     param.requires_grad = True
+                    for param in self.model.encoder.block[-1].parameters():
+                        param.requires_grad = True
 
-                    # for param in self.model.decoder.block[0].parameters():
-                    #     param.requires_grad = True
+                    for param in self.model.decoder.block[0].parameters():
+                        param.requires_grad = True
 
-                    # for param in self.model.decoder.block[-1].parameters():
-                    #     param.requires_grad = True
+                    for param in self.model.decoder.block[-1].parameters():
+                        param.requires_grad = True
 
                     for param in self.model.lm_head.parameters():
                         param.requires_grad = True
