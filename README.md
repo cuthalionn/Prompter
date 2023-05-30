@@ -52,9 +52,9 @@ Note: For MultiWOZ, 5 separate runs needed to replicate experiments in the paper
 **Generating Heatmaps**
 ```console
 ❱❱❱ cd scripts
-❱❱❱ generate_heat_map.sh "DOMAIN" "CKPT_FILE"
+❱❱❱ generate_heat_map.sh "domain" "ckpt_file"
 ```
-"DOMAIN" - The leftout domain
+- domain: The leftout domain
 
-"CKPT_FILE" - Path to the .ckpt file in the model directory
+- ckpt_file: Path to the .ckpt file in the model directory
 
