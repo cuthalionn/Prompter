@@ -44,19 +44,18 @@ class DST_Prefixed(pl.LightningModule):
         args["model_config"] = model.config
         self.fb = args["frozen_baseline"]
         self.ff = args["full_freeze"]
-        self.decoder_prefix = args["dec_pref"] if "dec_pref" in args else False
-        self.no_freeze = args["no_freeze"] if "no_freeze" in args else False
+        self.decoder_prefix = args["dec_pref"]
+        self.no_freeze = args["no_freeze"]
         self.train_bs = args["train_batch_size"]
         self.dev_bs = args["dev_batch_size"]
         self.test_bs = args["test_batch_size"]
-        self.prompter_dropout = args["prompter_dropout"] if "prompter_dropout" in args else 0.0
+        self.prompter_dropout = args["prompter_dropout"]
         self.prefix_prompter = Prefix_Prompter(args, model,args["down_proj"],self.model.config.num_layers,self.prompter_dropout)
         self.warm_up_steps = args["warm_up_steps"]
         self.phase = 1
-        self.prefix_length = args["prefix_length"] if "prefix_length" in args else 500
-        # self.prefix_length = 500  # Some runs accidentally overwrote the prefix length argument use this line for those. E.g. attr fb
+        self.prefix_length = args["prefix_length"]
         self.mode = args["mode"]
-        self.common_tokens = common_tokens if common_tokens is not None else "a" * 200
+        self.common_tokens = common_tokens
         self.save_hyperparameters()
         self.add_reparameterization = args["add_reparameterization"]
 
@@ -68,12 +67,14 @@ class DST_Prefixed(pl.LightningModule):
         if not self.add_reparameterization:
             self.final_global_prompt = torch.nn.Parameter(torch.zeros((self.prefix_length,self.model.config.d_model)))
         else:
-            self.global_prompt = torch.nn.Parameter(data = torch.rand(self.prefix_length,model.config.d_model // args["reparametrization_ratio"]), # Default reparametrization ratio is 2
+            self.global_prompt = torch.nn.Parameter(data = torch.rand(self.prefix_length,
+                                                        model.config.d_model // args["reparametrization_ratio"]),
                                                     requires_grad = False )
             self.reparametrizer = nn.Linear(in_features = model.config.d_model // args["reparametrization_ratio"],
                                             out_features = model.config.d_model)        
-            self.final_global_prompt = torch.nn.Parameter(data = torch.zeros(self.prefix_length,model.config.d_model),
-                                                requires_grad = False )
+            self.final_global_prompt = torch.nn.Parameter(data = torch.zeros(self.prefix_length,
+                                                            model.config.d_model),
+                                                        requires_grad = False )
         
         if self.ff:
             print("T5 model fully frozen")
@@ -85,7 +86,11 @@ class DST_Prefixed(pl.LightningModule):
         assert not self.global_prompts_set
 
         initial_prompt = " ".join(pair[0] for pair in self.common_tokens)
-        global_prompt_tokens = self.tokenizer(initial_prompt,padding=True, return_tensors="pt", add_special_tokens=False, verbose=False)["input_ids"][0][:self.prefix_length].cuda()
+        global_prompt_tokens = self.tokenizer(initial_prompt,
+                                              padding=True,
+                                              return_tensors="pt",
+                                              add_special_tokens=False,
+                                              verbose=False)["input_ids"][0][:self.prefix_length].cuda()
         global_prompt_data = torch.squeeze(self.model.shared(global_prompt_tokens),0)
         self.final_global_prompt.data = (global_prompt_data)
 
@@ -100,7 +105,11 @@ class DST_Prefixed(pl.LightningModule):
         encoder_input = input.cuda()
         encoder_attn = input_attentions.cuda()
         
-        placeholder_out = self.tokenizer("out text", padding=True, return_tensors="pt", add_special_tokens=False, return_attention_mask=False)['input_ids'].cuda()
+        placeholder_out = self.tokenizer("out text",
+                                         padding=True,
+                                         return_tensors="pt",
+                                         add_special_tokens=False,
+                                         return_attention_mask=False)['input_ids'].cuda()
         
         
         prompt_embed = self.model.shared(desc.cuda())
@@ -130,7 +139,7 @@ class DST_Prefixed(pl.LightningModule):
                                   return_dict = True
                                   )
         
-        return model_output["encoder_attentions"] # Tuple of torch.FloatTensor (one for each layer) of shape (batch_size, num_heads, sequence_length, sequence_length).
+        return model_output["encoder_attentions"]
     
     def get_prefixes(self,slot_descriptions,attentions):
         prompt_embed = self.model.shared(slot_descriptions)
@@ -186,8 +195,6 @@ class DST_Prefixed(pl.LightningModule):
         if not self.add_reparameterization and not self.global_prompts_set:
             self.init_global_prompt()
         
-        # Need to add optimizer_idx parameter if using optimizer_step function
-        #self.freeze_test()
         self.model.train()
         self.prefix_prompter.train()
         prefix_key = None
@@ -228,12 +235,7 @@ class DST_Prefixed(pl.LightningModule):
         self.log("train_loss", loss, on_step=True, on_epoch=False, prog_bar=True)
         return loss
 
-    # def training_step_end(self, training_step_outputs):
-    #     self.log("train_loss",training_step_outputs.sum(), on_step=True, on_epoch=False,prog_bar=True,sync_dist=True)
-    #     return {'loss': training_step_outputs.sum()}
-
     def validation_step(self, batch, batch_idx):
-        #self.freeze_test()
         self.model.eval()
         self.prefix_prompter.eval().cuda()  
         prefix_key = None
@@ -276,24 +278,6 @@ class DST_Prefixed(pl.LightningModule):
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
         return loss
-
-    def freeze_test(self):
-        if self.mode == "train":
-            if self.ff and not self.phase1_checked:
-                for param in self.model.parameters():
-                    assert param.requires_grad == False, "Model parameters frozen despite the option"
-                self.phase1_checked = True
-            if not self.ff and self.phase==1 and not self.phase1_checked:
-                for param in self.model.parameters():
-                    assert param.requires_grad == True, "Model parameters are not frozen despite the option"
-                self.phase1_checked = True
-            if not self.ff and self.phase==2 and not self.phase2_checked:
-                for param in self.model.encoder.block[-1].parameters():
-                    assert  param.requires_grad == True, "Model parameters frozen despite the option"
-                for param in self.model.encoder.block[-3].parameters():
-                    assert param.requires_grad == False, "Model parameters not frozen despite the option"
-                self.phase2_checked = True
-        return None
 
     def optimizer_step(
         self,
@@ -339,128 +323,10 @@ class DST_Prefixed(pl.LightningModule):
                 optimizer.step(closure=optimizer_closure)
             else:
                 # update params
-                # if optimizer_idx == 1:
                 optimizer.step(closure=optimizer_closure)
-
-    # def configure_optimizers(self):
-    #     return AdamW(filter(lambda p: p.requires_grad, self.parameters()), lr=self.lr,correct_bias=True),AdamW(self.prompt_layer.parameters(), lr=self.lr,correct_bias=True)
 
     def configure_optimizers(self):
         return AdamW(filter(lambda p: p.requires_grad, self.parameters()), lr=self.lr,correct_bias=True)
-
-
-
-
-class DST_Seq2Seq(pl.LightningModule):
-
-    def __init__(self, args, tokenizer, model):
-        super().__init__()
-        self.tokenizer = tokenizer
-        self.model = model
-        self.lr = args["lr"]
-
-
-    def training_step(self, batch, batch_idx):
-        self.model.train()
-        # ORIGINAL CODE
-        model_output = self.model(input_ids=batch["encoder_input"],
-                                attention_mask=batch["encoder_attention_mask"],
-                                labels=batch["decoder_output"]
-                                )
-        # ORIGINAL CODE
-        # With padding  
-        # (loss), *_ = self.model(input_ids=batch["se_input"],
-        #                     attention_mask=batch["se_attention_mask"],
-        #                     lm_labels=batch["decoder_output"]
-        #                     )
-        # With padding 
-        self.log("train_loss",
-                 model_output["loss"],
-                 on_step=True,
-                 on_epoch=False,
-                 prog_bar=True)
-               
-        return {'loss': model_output["loss"], 'log': {'train_loss': model_output["loss"]}}
-
-    def validation_step(self, batch, batch_idx):
-        self.model.eval()
-        model_output = self.model(input_ids=batch["encoder_input"],
-                                attention_mask=batch["encoder_attention_mask"],
-                                labels=batch["decoder_output"]
-                                )
-
-        self.log("val_loss", model_output["loss"], on_step=True, on_epoch=False, prog_bar=True)
-
-        return {'val_loss': model_output["loss"], 'log': {'val_loss': model_output["loss"]}}
-
-    def validation_epoch_end(self, outputs):
-        val_loss_mean = sum([o['val_loss'] for o in outputs]) / len(outputs)
-        # show val_loss in progress bar but only log val_loss
-        results = {'progress_bar': {'val_loss': val_loss_mean.item()}, 'log': {'val_loss': val_loss_mean.item()},
-                   'val_loss': val_loss_mean.item()}
-        return results
-
-    def configure_optimizers(self):
-        return AdamW(self.parameters(), lr=self.lr, correct_bias=True)
-
-
-def do_inference(args, *more):
-    args = vars(args) 
-    run_name = args["wandb_run_name"]
-    wandb_logger = WandbLogger(name=run_name,
-                               project=args["wandb_project_name"],
-                               job_type=args["wandb_job_type"],
-                               group=args["wandb_group_name"]) 
-
-    args["model_name"] = args["model_name"] + args["wandb_run_name"] + \
-        "_except_domain_"+args["except_domain"] + "_slotlang_" + \
-        str(args["slot_lang"]) + "_lr_" + str(args["lr"]) + "_epoch_" + \
-        str(args["n_epochs"]) + "_seed_" + str(args["seed"])
-    run_name = args["wandb_run_name"]
-    wandb_logger = WandbLogger(name= run_name,project=args["wandb_project_name"],job_type=args["wandb_job_type"] ,group=args["wandb_group_name"]) 
-    # train!
-    seed_everything(args["seed"])
-    
-    tokenizer = T5TokenizerFast.from_pretrained(args["T5_checkpoint"],
-                                                    bos_token="[bos]",
-                                                    eos_token="[eos]",
-                                                    sep_token="[sep]")
-    model = T5ForConditionalGeneration.from_pretrained(args["T5_checkpoint"])
-    tokenizer = T5TokenizerFast.from_pretrained(args["T5_checkpoint"],
-                                                bos_token="[bos]",
-                                                eos_token="[eos]",
-                                                sep_token="[sep]")
-    model.resize_token_embeddings(new_num_tokens=len(tokenizer))
-    _, _, test_loader, ALL_SLOTS, _, _, _ = prepare_data(args, tokenizer)
-
-    task = None
-
-    # TODO calculate and insert these weights
-    # to args inside to data_loader module
-    args["pos_none_weight_train"] = pos_none_weight_train
-    args["pos_none_weight_val"] = pos_none_weight_val
-
-    tokenizer = T5TokenizerFast.from_pretrained(args["model_checkpoint"],
-                                                bos_token="[bos]",
-                                                eos_token="[eos]",
-                                                sep_token="[sep]")
-    if args["use_baseline"]:
-        task = DST_Seq2Seq(args, tokenizer, model)
-    else:    
-        task = DST_Prompted(args, tokenizer, model)
-
-    if args["ckpt_file"] == "":
-        task.load_state_dict(torch.load("{}/task.pt".format(args["model_checkpoint"])))
-    else:
-        task = task.load_from_checkpoint("{}/{}".format(args["model_checkpoint"], args["ckpt_file"]))
-               
-    task.eval()
-    print("test start...")
-    # Evaluate model
-    _ = evaluate_model(args, task, task.tokenizer, task.model,
-                       test_loader, args["test_path"],
-                       ALL_SLOTS, wandb_logger)
-
 
 def train(args, *more):
     args = vars(args)
@@ -483,12 +349,6 @@ def train(args, *more):
                                                     bos_token="[bos]",
                                                     eos_token="[eos]",
                                                     sep_token="[sep]")
-    elif "bart" in args["model_name"]:
-        model = BartForConditionalGeneration.from_pretrained(args["T5_checkpoint"])
-        tokenizer = BartTokenizer.from_pretrained(args["T5_checkpoint"],
-                                                  bos_token="[bos]",
-                                                  eos_token="[eos]",
-                                                  sep_token="[sep]")
 
         model.resize_token_embeddings(new_num_tokens=len(tokenizer))
 
@@ -498,10 +358,7 @@ def train(args, *more):
     
 
     task = None
-    if args["use_baseline"]:
-        task = DST_Seq2Seq(args, tokenizer, model)
-    else:
-        task = DST_Prefixed(args, tokenizer, model,global_prompts)
+    task = DST_Prefixed(args, tokenizer, model,global_prompts)
 
     if args["model_checkpoint"] != "":
         task.load_state_dict(torch.load("{}/task.pt".format(args["model_checkpoint"])))
@@ -509,14 +366,22 @@ def train(args, *more):
 
     #save model path
     save_path = os.path.join(args["saving_dir"],args["model_name"])
-    # checkpoint_callback = ModelCheckpoint(monitor='val_loss',filepath=save_path,mode="min")
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    checkpoint_callback = ModelCheckpoint(filepath= save_path+"/{epoch}-{global_step}-{val_loss:.2f}",monitor='val_loss',verbose = False,save_last= True,save_top_k = 1, mode="min",)
+    checkpoint_callback = ModelCheckpoint(filepath= save_path+"/{epoch}-{global_step}-{val_loss:.2f}",
+                                          monitor='val_loss',
+                                          verbose = False,
+                                          save_last= True,
+                                          save_top_k = 1,
+                                          mode="min",)
     callbacks = []
     if not args["no_early_stop"]:
-        callbacks= [pl.callbacks.EarlyStopping(monitor='val_loss',min_delta=args["min_delta"], patience=args["patience"],verbose=False, mode='min')]
+        callbacks= [pl.callbacks.EarlyStopping(monitor='val_loss',
+                                               min_delta=args["min_delta"],
+                                               patience=args["patience"],
+                                               verbose=False,
+                                               mode='min')]
     trainer = Trainer(
                     default_root_dir=save_path,
                     accumulate_grad_batches=args["gradient_accumulation_steps"],
@@ -534,10 +399,6 @@ def train(args, *more):
                     )
 
     trainer.fit(task, train_loader, val_loader)
-    # if args["use_baseline"]:
-    #     task = DST_Seq2Seq.load_from_checkpoint(checkpoint_path=checkpoint_callback.best_model_path)
-    # else:    
-    #     task = DST_Prompted.load_from_checkpoint(checkpoint_path=checkpoint_callback.best_model_path)
     task = task.load_from_checkpoint(checkpoint_callback.best_model_path)
     torch.save(task.state_dict(), "{}/task.pt".format(save_path))
     task.tokenizer.save_pretrained(save_path)
@@ -561,14 +422,7 @@ def evaluate_model(args,task, tokenizer, model, test_loader, save_path, ALL_SLOT
     slot_logger = {slot_name:[0,0,0] for slot_name in ALL_SLOTS}
 
     for batch in tqdm(test_loader):
-        if args["use_baseline"]:
-            dst_outputs = model.generate(input_ids=batch["encoder_input"].to(device),
-                                    attention_mask=batch["attention_mask"].to(device),
-                                    eos_token_id=tokenizer.eos_token_id,
-                                    max_length=200,
-                                    )
-        else:
-            dst_outputs = task.generate(batch)
+        dst_outputs = task.generate(batch)
         
         value_batch = tokenizer.batch_decode(dst_outputs, skip_special_tokens=True)
 
@@ -623,85 +477,6 @@ def evaluate_model(args,task, tokenizer, model, test_loader, save_path, ALL_SLOT
 
     return predictions
 
-
-def fine_tune(args, *more):
-    args = vars(args)
-    
-    domains = ["hotel", "train", "restaurant", "attraction", "taxi"]
-    for domain in domains:
-        if domain in args["T5_checkpoint"]:
-            args["only_domain"] = domain
-            
-    assert args["only_domain"]!="none", "only_domain is not indicated"
-    assert args["except_domain"]=="none", "except_domain should be set to none for finetuning"
-
-    args["model_name"] = args["model_name"] + args["wandb_run_name"] + \
-        "_only_domain_"+args["only_domain"] + "_few_shot_"+ str(args["fewshot"]) + "_slotlang_" +\
-        str(args["slot_lang"]) + "_lr_" + str(args["lr"]) + "_epoch_" + \
-        str(args["n_epochs"]) + "_seed_" + str(args["seed"])
-
-    run_name = args["wandb_run_name"]
-    wandb_logger = WandbLogger(name= run_name,project=args["wandb_project_name"],job_type=args["wandb_job_type"] ,group=args["wandb_group_name"]) 
-
-    seed_everything(args["seed"])
-    assert (args["model_checkpoint"] != ""), "no checkpoint file is provided"
-
-    loaded_task = DST_Prefixed.load_from_checkpoint(args["model_checkpoint"],strict=False,).cuda()
-    tokenizer = loaded_task.tokenizer
-
-    train_loader, val_loader, test_loader, \
-        ALL_SLOTS, fewshot_loader_dev, fewshot_loader_test,global_prompts = prepare_data(args, tokenizer)
-
-    task = None
-    if args["use_baseline"]:
-        task = DST_Seq2Seq(args, tokenizer, loaded_task.model)
-    else:
-        task = DST_Prefixed(args, tokenizer, loaded_task.model, global_prompts)
-
-    
-    # HACK Ensure that this also updates the tokenizer.
-    # task.load_state_dict(torch.load("{}/task.pt".format(args["model_checkpoint"])))
-
-    task.load_state_dict(loaded_task.state_dict(),strict=False)
-    task.global_prompts_set = True # HACK This was being thrown when init method is called during finetuning.
-    save_path = os.path.join(args["saving_dir"],args["model_name"])
-
-    wandb_logger = WandbLogger(name= run_name,project=args["wandb_project_name"],job_type=args["wandb_job_type"] ,group=args["wandb_group_name"]) 
-
-    checkpoint_callback = ModelCheckpoint(filepath= save_path+"/{epoch}-{global_step}-{val_loss:.2f}",
-    monitor='val_loss',verbose = False,save_last= True,save_top_k = 1, mode="min",)
-    callbacks = []
-    if not args["no_early_stop"]:
-        callbacks= [pl.callbacks.EarlyStopping(monitor='val_loss',min_delta=args["min_delta"], patience=args["patience"],verbose=False, mode='min')]
-
-    trainer = Trainer(
-                    default_root_dir=save_path,
-                    accumulate_grad_batches=args["gradient_accumulation_steps"],
-                    gradient_clip_val=args["max_norm"],
-                    max_epochs=args["n_epochs"],
-                    callbacks=callbacks,
-                    checkpoint_callback = checkpoint_callback,
-                    gpus=args["GPU"],
-                    deterministic=True,
-                    num_nodes=1,
-                    # precision=16,
-                    accelerator="dp",
-                    logger = wandb_logger,
-                    val_check_interval = args["val_check_interval"]
-                    )
-    
-    trainer.fit(task, train_loader, val_loader)
-
-    task = task.load_from_checkpoint(checkpoint_callback.best_model_path)
-    task.global_prompts_set = True
-    torch.save(task.state_dict(), "{}/task.pt".format(save_path))
-    task.tokenizer.save_pretrained(save_path)
-
-    print("test start...")
-    #evaluate model
-    ratio = "ratio_" + str(args["fewshot"]) + "_seed_" + str(args["seed"])
-    _ = evaluate_model(args,task, task.tokenizer, task.model, test_loader,save_path, ALL_SLOTS,wandb_logger, prefix=ratio)
-
 def main():
 
     args = get_args() 
@@ -711,13 +486,7 @@ def main():
     #Preliminary Checks
     assert args.dataset in ["multiwoz", "sgd"], "{} is not a valid dataset name".format(args.dataset)
     
-    
-    if args.mode=="train":
-        train(args)
-    if args.mode=="finetune":
-        fine_tune(args)
-    if args.mode=="infer":
-        do_inference(args)
+    train(args)
 
 if __name__ == "__main__":
     main()

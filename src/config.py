@@ -33,7 +33,6 @@ def get_args():
 
     parser.add_argument("--verbose", action='store_true', help="continual baseline")
     parser.add_argument("--no_early_stop", action='store_true', help="deactivate early stopping")
-    parser.add_argument("--use_baseline", action='store_true', help="use model baseline")
     parser.add_argument("--none_gate", action='store_true', help="use none gated version")
     parser.add_argument("--frozen_baseline", action='store_true', help="frozen baseline setting")
     parser.add_argument("--full_freeze", action='store_true', help="LM fully frozen setting")
