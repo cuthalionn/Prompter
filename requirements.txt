@@ -1,3 +1,4 @@
 torch==1.7.1
 transformers==4.16.2
 pytorch-lightning==1.0.3
+tqdm
