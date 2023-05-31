@@ -12,26 +12,32 @@ Our method, Prompter, uses /home/users/astar/i2r/stuait/scratch/Projects/Prompte
  (a) Slot Prompt Generation where the information from the description is fused with some global prompt to generate slot-specific prompts, (b) Prefix Generation which feeds slot prompts across two linear layers and an activation function to generate per-layer key and value prefixes, (c) Finally these prefixes are concatenated to keys and values at every layer of the T5 encoder.
 
 
-## Dependency
+## Setting up the environment
+Create a new environment with python>=3.8.12
+```console
+conda create -n prompter python==3.8.12
+```
 Check the packages needed or simply run the command
 ```console
 pip install -r requirements.txt
 ```
-
+Change directory to the main folder and install the package
+```console
+cd Prompter
+pip install -e .
+```
 ## Experiments
 
 **Dataset Generation**
 
 *MultiWOZ*
 ```console
-cd scripts
 python create_mwoz.py
 ```
 use create_mwoz_2_1.py if want to run with multiwoz2.1
 
 *SGD*
 ```console
-cd scripts
 ./download_sgd.sh
 ```
 
