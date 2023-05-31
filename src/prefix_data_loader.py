@@ -379,7 +379,7 @@ def find_global_tokens_SGD(dials):
         Sort them by frequency. i.e. most frequent non stop word should be the first element of this list. 
         Use top N of these to initialize the global prompt.
     """
-    print("Finding global prompts")
+    print("Finding global prompts, this may take a few minutes ...")
     tokenizer = RegexpTokenizer(r'\w+')
     word_counter = Counter()
     stop_words = set(stopwords.words('english'))
