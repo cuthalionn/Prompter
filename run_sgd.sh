@@ -1,7 +1,7 @@
-src/T5_prefix_tuning.py 
+python src/T5_prefix_tuning.py \
     --dataset sgd \
     --add_reparameterization \
-    --T5_checkpoint save/models/small/ \
+    --T5_checkpoint ../save/models/small/ \
     --gpu_id 0 \
     --train_batch_size 8 \
     --gradient_accumulation_steps 8 \
