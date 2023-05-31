@@ -12,6 +12,8 @@ Our method, Prompter, uses /home/users/astar/i2r/stuait/scratch/Projects/Prompte
  (a) Slot Prompt Generation where the information from the description is fused with some global prompt to generate slot-specific prompts, (b) Prefix Generation which feeds slot prompts across two linear layers and an activation function to generate per-layer key and value prefixes, (c) Finally these prefixes are concatenated to keys and values at every layer of the T5 encoder.
 
 
+We re-use most of the data generation and training code from https://github.com/facebookresearch/Zero-Shot-DST/tree/main/T5DST
+
 ## Setting up the environment
 Create a new environment with python>=3.8.12
 ```console
