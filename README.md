@@ -43,7 +43,7 @@ use create_mwoz_2_1.py if want to run with multiwoz2.1
 
 *MultiWOZ* 
 ```console
-run_mwoz.sh "domain"
+./run_mwoz.sh "domain"
 ```
 * domain: the left out domain, choose one from [hotel, train, attraction, restaurant, taxi]
 
@@ -51,13 +51,23 @@ Note: For MultiWOZ, 5 separate runs needed to replicate experiments in the paper
 
 *SGD* 
 ```console
-run_sgd.sh
+./run_sgd.sh
 ```
+**Evaluation**
 
-**Generating Heatmaps**
+The training script automatically evaluates the results and puts the relative files under the results folder of the run (src/save/path_to_the_run/results/...)
+
+For SGD dataset you can also use the provided official scripts. Set the PRED variable inside `sgd_eval.sh` to the run directory under 'src/save/...' :
 ```console
 cd scripts
-generate_heat_map.sh "domain" "ckpt_file"
+./sgd_eval.sh
+```
+This will generate a new file `result.json` in the run directory.
+
+**Generating Heatmaps for models trained on MultiWOZ**
+```console
+cd scripts
+./generate_heat_map.sh "domain" "ckpt_file"
 ```
 - domain: The leftout domain
 
