@@ -15,7 +15,7 @@ Our method, Prompter, uses /home/users/astar/i2r/stuait/scratch/Projects/Prompte
 ## Dependency
 Check the packages needed or simply run the command
 ```console
-❱❱❱ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Experiments
@@ -24,22 +24,22 @@ Check the packages needed or simply run the command
 
 *MultiWOZ*
 ```console
-❱❱❱ cd scripts
-❱❱❱ python create_mwoz.py
+cd scripts
+python create_mwoz.py
 ```
 use create_mwoz_2_1.py if want to run with multiwoz2.1
 
 *SGD*
 ```console
-❱❱❱ cd scripts
-❱❱❱ ./download_sgd.sh
+cd scripts
+./download_sgd.sh
 ```
 
 **Zero-shot cross-domain Experiments**
 
 *MultiWOZ* 
 ```console
-❱❱❱ run_mwoz.sh "domain"
+run_mwoz.sh "domain"
 ```
 * domain: the left out domain, choose one from [hotel, train, attraction, restaurant, taxi]
 
@@ -47,13 +47,13 @@ Note: For MultiWOZ, 5 separate runs needed to replicate experiments in the paper
 
 *SGD* 
 ```console
-❱❱❱ run_sgd.sh
+run_sgd.sh
 ```
 
 **Generating Heatmaps**
 ```console
-❱❱❱ cd scripts
-❱❱❱ generate_heat_map.sh "domain" "ckpt_file"
+cd scripts
+generate_heat_map.sh "domain" "ckpt_file"
 ```
 - domain: The leftout domain
 
