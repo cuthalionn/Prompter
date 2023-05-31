@@ -17,13 +17,11 @@ Create a new environment with python>=3.8.12
 ```console
 conda create -n prompter python==3.8.12
 ```
-Check the packages needed or simply run the command
-```console
-pip install -r requirements.txt
-```
-Change directory to the main folder and install the package
+
+Change directory to the main folder and install the packages
 ```console
 cd Prompter
+pip install -r requirements.txt
 pip install -e .
 ```
 ## Experiments
