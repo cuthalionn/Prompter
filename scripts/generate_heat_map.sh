@@ -1,7 +1,7 @@
 cd ..
 DOMAIN=$1
 CHECK_POINT=$2
-python src/T5_prefix_tuning.py \
+python src/prefix_heat_map.py \
     --dataset multiwoz \
     --T5_checkpoint ../save/models/small/ \
     --ckpt_file $CHECK_POINT \

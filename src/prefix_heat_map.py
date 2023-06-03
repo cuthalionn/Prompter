@@ -40,11 +40,8 @@ class Solution():
                                                     eos_token="[eos]",
                                                     sep_token="[sep]")
 
-        _, _, _,_, _, _, global_prompts = prepare_data(self.args, tokenizer)
-        self.task = DST_Prefixed.load_from_checkpoint(self.args["model_checkpoint"],common_tokens=global_prompts).cuda()
-
-        if self.args["ckpt_file"] == "":
-            self.task.load_state_dict(torch.load("{}/task.pt".format(self.args["model_checkpoint"])))
+        _, _, _,_, global_prompts = prepare_data(self.args, tokenizer)
+        self.task = DST_Prefixed.load_from_checkpoint(self.args["ckpt_file"],common_tokens=global_prompts).cuda()
 
         self.all_slots = sorted(get_slot_information(self.ontology),key = lambda x: x.split("-")[0])
         description = json.load(open("../src/utils/slot_description.json", 'r'))
@@ -101,12 +98,8 @@ class Solution():
         return cos_sims,source_slots,except_slots
 
     def draw_heat_map(self,cos_sims, source_slots, except_slots,keys):
-        except_idcs = [2,3]
-        source_idcs = [1,8,12,16,17,22,23,24,25]
-        # except_idcs = [0,3,4]
-        # source_idcs = [1,6,7,17,18,19,21,22,23]
-        # except_idcs = range(len(except_slots))
-        # source_idcs = range(len(source_slots))
+        except_idcs = range(len(except_slots))
+        source_idcs = range(len(source_slots))
         # Draw a heatmap showing the similarities of prefixes for each training setting.
         cos_sims = cos_sims.cpu().detach().numpy()
         # print(f"cos_sims_shape:{cos_sims.shape}, source_slots_shape: {len(source_slots)}, except_slots_shape:{len(except_slots)}")
