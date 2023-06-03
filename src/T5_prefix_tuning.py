@@ -310,11 +310,16 @@ class DST_Prefixed(pl.LightningModule):
                     for param in self.model.encoder.block[-1].parameters():
                         param.requires_grad = True
 
-                    for param in self.model.decoder.block[0].parameters():
-                        param.requires_grad = True
+                    # Unlike experiments conducted in the paper we later
+                    # found that freezing only encoder can result in
+                    # more stable results. If you want to replicate the paper
+                    # results uncomment both for loops below.
+                     
+                    # for param in self.model.decoder.block[0].parameters():
+                    #     param.requires_grad = True
 
-                    for param in self.model.decoder.block[-1].parameters():
-                        param.requires_grad = True
+                    # for param in self.model.decoder.block[-1].parameters():
+                    #     param.requires_grad = True
 
                     for param in self.model.lm_head.parameters():
                         param.requires_grad = True
