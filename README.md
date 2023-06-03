@@ -76,3 +76,5 @@ cd scripts
 
 - ckpt_file: Path to the .ckpt file in the model directory
 
+The resulting figure will be saved under `figures/heatmap`.
+
