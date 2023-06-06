@@ -1,6 +1,5 @@
 '''
 Original Copyright Ibrahim Taha Aksu, 2023.
-All Rights Reserved.
 '''
 
 import copy
