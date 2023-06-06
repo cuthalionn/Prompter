@@ -1,7 +1,7 @@
 '''
-Original Copyright (c) Facebook, Inc. and its affiliates
+Original Copyright (c) Facebook, Inc. and its affiliates.
+Licensed under Attribution-NonCommercial-ShareAlike 4.0 International License.
 Modifications Copyright Ibrahim Taha Aksu, 2023.
-All Rights Reserved.
 '''
 
 from optparse import Values
